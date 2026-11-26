@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>英文句子朗讀練習</title>
+<style>
+:root{--ink:#1d2b3a;--bg:#f3f7fb;--card:#fff;--blue:#1565c0;--red:#c62828;--green:#2e7d32;--orange:#b35300;--line:#cfdae6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;line-height:1.6}
+main{max-width:860px;margin:0 auto;padding:16px}
+h1{font-size:30px;margin:8px 0;text-align:center}
+.card{background:var(--card);border-radius:20px;padding:22px;margin:14px 0;box-shadow:0 2px 10px #0001}
+button{font:inherit;font-size:21px;font-weight:700;border:2px solid var(--line);background:#fff;color:var(--ink);border-radius:16px;padding:12px 20px;cursor:pointer;min-height:56px}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible,input:focus-visible{outline:4px solid #ffb300;outline-offset:2px}
+.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.rec{background:var(--red);border-color:var(--red);color:#fff;font-size:28px;padding:18px 34px}
+.rec.on{animation:pulse 1s infinite alternate}
+@keyframes pulse{to{box-shadow:0 0 0 12px #c6282833}}
+@media (prefers-reduced-motion:reduce){.rec.on{animation:none}}
+.save{background:var(--green);border-color:var(--green);color:#fff}
+.row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:center;margin:12px 0}
+input{font:inherit;font-size:22px;padding:12px;border:2px solid var(--line);border-radius:14px;width:100%}
+label{font-weight:700;font-size:20px;display:block;margin:12px 0 4px}
+.dots{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.dot{width:62px;border-radius:50%;padding:0;height:62px}
+.dot.done{background:#dcefdc;border-color:var(--green)}
+.dot.cur{border:5px solid var(--blue)}
+.tabs button.sel{background:#fff3c4;border-color:#c98f00}
+.sentence{font-size:38px;font-weight:700;text-align:center;line-height:1.7;margin:16px 0;font-family:Arial,sans-serif}
+.w{cursor:pointer;display:inline-block;padding:0 4px;border-radius:8px}
+.w:hover{background:#e3f0ff}
+.w.ok{background:#d7f0d7;color:#1b5e20}
+.w.no{background:#ffe6cc;color:#8a3f00;text-decoration:underline wavy}
+.slash{color:#9aabbd;margin:0 6px}
+.zh{text-align:center;font-size:22px;color:#4a5d70}
+.result{text-align:center;font-size:24px}
+.stars{font-size:48px;letter-spacing:8px}
+.score{font-size:40px;font-weight:800;color:var(--blue)}
+audio{width:100%;max-width:520px}
+.status{text-align:center;font-size:19px;min-height:1.6em;color:#4a5d70}
+.warn{background:#fff3e0;border:2px solid #ffb74d;border-radius:14px;padding:12px;font-size:18px}
+.small{font-size:17px;min-height:44px;padding:6px 14px}
+table{width:100%;border-collapse:collapse}
+td,th{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
+.hide{display:none}
+</style>
+</head>
+<body>
+<main>
+<h1>🎤 英文句子朗讀練習</h1>
+<div id="envWarn" class="warn hide"></div>
+
+<section id="login" class="card">
+  <label for="cls">班級座號</label><input id="cls" placeholder="例：90105" autocomplete="off">
+  <label for="nm">姓名</label><input id="nm" placeholder="例：王小明" autocomplete="off">
+  <div class="row"><button class="primary" id="startBtn">開始練習 ▶</button></div>
+  <div class="status" id="loginMsg"></div>
+</section>
+
+<section id="practice" class="hide">
+  <div class="row"><span id="who"></span><button class="small" id="switchBtn">換學生</button></div>
+  <div class="dots" id="dots"></div>
+  <div class="card">
+    <div class="row tabs" id="tabs"></div>
+    <div class="sentence" id="sentence" lang="en"></div>
+    <div class="row"><button id="zhBtn" class="small">看中文</button></div>
+    <div class="zh hide" id="zh"></div>
+    <div class="row">
+      <button id="listenSlow">🐢 慢慢聽</button>
+      <button id="listen">🔊 聽一次</button>
+    </div>
+    <div class="row"><button class="rec" id="recBtn">🎤 開始錄音</button></div>
+    <div class="status" id="status" aria-live="polite"></div>
+    <div class="result hide" id="result">
+      <div class="stars" id="stars"></div>
+      <div class="score" id="score"></div>
+      <div id="praise"></div>
+      <audio id="player" controls></audio>
+      <div class="row">
+        <button id="againBtn">🔁 再錄一次</button>
+        <button class="save" id="saveBtn">✅ 存起來</button>
+      </div>
+    </div>
+  </div>
+  <div class="row"><button id="prevBtn">◀ 上一句</button><button id="nextBtn">下一句 ▶</button></div>
+  <div class="card hide result" id="finish">
+    <div class="stars">🎉</div><div>五句都完成了，你很棒！</div>
+  </div>
+  <div class="row"><button class="small" id="teacherBtn">👩‍🏫 老師評分與下載</button></div>
+</section>
+
+<section id="teacher" class="card hide">
+  <div class="row"><button id="backBtn">◀ 回練習</button><button class="primary" id="zipBtn">⬇ 下載全部錄音＋成績</button></div>
+  <div class="status" id="tMsg"></div>
+  <div id="tList"></div>
+  <div class="row"><button class="small" id="clearBtn">🗑 清除這位學生的紀錄</button></div>
+</section>
+</main>
+
+<script>
+/* ★ 要自動存到老師的雲端硬碟：把 Apps Script 的網址貼在引號裡（結尾是 /exec） */
+const UPLOAD_URL = "";
+
+const SENTENCES = [
+ {parts:["AI can help plan","where to place","a lamp or a couch."], zh:"AI 可以幫忙規劃檯燈或沙發要放在哪裡。"},
+ {parts:["I guess he forgot","the way to our center","and got scared."], zh:"我猜他忘了到我們中心的路，所以很害怕。"},
+ {parts:["Animal heroes save lives,","help people in need,","and bring joy to people."], zh:"動物英雄拯救生命、幫助有需要的人，也帶給人們快樂。"},
+ {parts:["We know that heroes","can come in","different shapes and sizes."], zh:"我們知道英雄可以有各種不同的樣子。"},
+ {parts:["These tools are so useful","that people use them","in many parts of their lives."], zh:"這些工具很有用，所以人們在生活中的許多地方使用它們。"}
+];
+const $ = id => document.getElementById(id);
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let student = null, records = {}, cur = 0, part = -1, take = null, active = null, busy = false;
+
+/* ---------- 儲存（存在這台電腦的瀏覽器，下次可接著做） ---------- */
+let dbP = null; const memory = new Map();
+function db(){
+  if(!dbP) dbP = new Promise(res=>{
+    try{
+      const r = indexedDB.open("reading-practice",1);
+      r.onupgradeneeded = ()=>r.result.createObjectStore("s");
+      r.onsuccess = ()=>res(r.result); r.onerror = ()=>res(null);
+    }catch(e){res(null)}
+  });
+  return dbP;
+}
+async function dbGet(k){const d=await db(); if(!d) return memory.get(k);
+  return new Promise(res=>{const r=d.transaction("s").objectStore("s").get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>res(undefined)});}
+async function dbSet(k,v){const d=await db(); if(!d){memory.set(k,v);return false}
+  return new Promise(res=>{const t=d.transaction("s","readwrite");t.objectStore("s").put(v,k);t.oncomplete=()=>res(true);t.onerror=t.onabort=()=>res(false)});}
+const persist = () => dbSet(student.key, records);
+
+/* ---------- 文字與評分 ---------- */
+const full = i => SENTENCES[i].parts.join(" ");
+const target = (i,p) => p<0 ? full(i) : SENTENCES[i].parts[p];
+const words = t => t.toLowerCase().replace(/a\.\s?i\.?/g,"ai").replace(/\ba i\b/g,"ai").replace(/[’]/g,"'").replace(/[^a-z0-9' ]+/g," ").split(/\s+/).filter(Boolean);
+function match(tw, hw){ /* 依順序比對（最長共同子序列） */
+  const L = Array.from({length:tw.length+1},()=>new Array(hw.length+1).fill(0));
+  for(let i=tw.length-1;i>=0;i--) for(let j=hw.length-1;j>=0;j--)
+    L[i][j] = tw[i]===hw[j] ? L[i+1][j+1]+1 : Math.max(L[i+1][j],L[i][j+1]);
+  const ok = new Array(tw.length).fill(false); let i=0,j=0;
+  while(i<tw.length&&j<hw.length){
+    if(tw[i]===hw[j]){ok[i]=true;i++;j++} else if(L[i+1][j]>=L[i][j+1]) i++; else j++;
+  }
+  return ok;
+}
+const keyOf = (i,p) => i+"_"+p;
+/* 一句的成績：有整句錄音用整句（和分段取較高者）；否則要所有小段都存了才算完成 */
+function sentenceResult(i){
+  const f = records[keyOf(i,-1)];
+  const ps = SENTENCES[i].parts.map((_,p)=>records[keyOf(i,p)]);
+  const allParts = ps.every(Boolean);
+  let partScore = null;
+  if(allParts && ps.every(r=>r.score!==null)){
+    let hit=0,n=0; ps.forEach((r,p)=>{const c=words(target(i,p)).length;hit+=r.score*c;n+=c});
+    partScore = Math.round(hit/n);
+  }
+  const done = !!f || allParts;
+  let score=null, how="";
+  if(f && f.score!==null){score=f.score;how="整句"}
+  if(partScore!==null && (score===null||partScore>score)){score=partScore;how="分段"}
+  if(done && !how) how = f ? "整句" : "分段";
+  return {done,score,how};
+}
+
+/* ---------- 示範朗讀 ---------- */
+function say(text, rate){
+  if(busy || !window.speechSynthesis) { if(!window.speechSynthesis) $("status").textContent="這台電腦不能播放示範，請老師帶讀。"; return; }
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text); u.lang="en-US"; u.rate=rate;
+  const v = speechSynthesis.getVoices().find(v=>v.lang.replace("_","-")==="en-US"); if(v) u.voice=v;
+  speechSynthesis.speak(u);
+}
+
+/* ---------- 畫面 ---------- */
+function show(id){["login","practice","teacher"].forEach(s=>$(s).classList.toggle("hide",s!==id))}
+function button(text, cls, fn){const b=document.createElement("button");b.textContent=text;b.className=cls;b.onclick=fn;return b}
+function renderNav(){
+  $("dots").replaceChildren(...SENTENCES.map((_,i)=>{
+    const d = sentenceResult(i).done;
+    const b = button(d?"⭐"+(i+1):String(i+1), "dot"+(d?" done":"")+(i===cur?" cur":""), ()=>go(i));
+    b.setAttribute("aria-label","第"+(i+1)+"句"+(d?"，已完成":"")); return b;
+  }));
+  const names = ["整句",...SENTENCES[cur].parts.map((_,p)=>"第"+(p+1)+"段")];
+  $("tabs").replaceChildren(...names.map((n,k)=>{
+    const p=k-1; return button((records[keyOf(cur,p)]?"✔ ":"")+n, "small"+(p===part?" sel":""), ()=>{if(!leaveOk())return;part=p;resetTake();render()});
+  }));
+  $("finish").classList.toggle("hide", !SENTENCES.every((_,i)=>sentenceResult(i).done));
+}
+function renderSentence(ok){
+  const el=$("sentence"); el.replaceChildren(); let n=0;
+  const list = part<0 ? SENTENCES[cur].parts : [SENTENCES[cur].parts[part]];
+  list.forEach((chunk,c)=>{
+    if(c){const s=document.createElement("span");s.className="slash";s.textContent="/";el.append(s," ")}
+    chunk.split(" ").forEach(w=>{
+      const s=document.createElement("span"); s.className="w"; s.textContent=w;
+      if(ok) s.classList.add(ok[n]?"ok":"no"); n++;
+      s.onclick=()=>say(w.replace(/[.,]/g,""),0.7);
+      el.append(s," ");
+    });
+  });
+}
+function render(){
+  renderNav(); renderSentence(take && take.ok);
+  $("zh").textContent = SENTENCES[cur].zh;
+  $("prevBtn").disabled = cur===0; $("nextBtn").disabled = cur===SENTENCES.length-1;
+  const saved = records[keyOf(cur,part)];
+  const r = take || saved;
+  $("result").classList.toggle("hide",!r);
+  if(!r) return;
+  const s = r.score;
+  $("stars").textContent = s===null ? "🎧" : s>=80 ? "⭐⭐⭐" : s>=50 ? "⭐⭐" : "⭐";
+  $("score").textContent = s===null ? "等老師評分" : s+" 分";
+  $("praise").textContent = s===null ? "聽聽看自己的聲音，可以再錄一次，或存起來。" :
+     s>=80 ? "太棒了！念得很清楚！" : s>=50 ? "很不錯！點橘色的字聽一聽，再試一次。" : "有開口就很好！先按「慢慢聽」，再念一次。";
+  if($("player").dataset.id !== r.id){
+    if($("player").src) URL.revokeObjectURL($("player").src);
+    $("player").src = URL.createObjectURL(r.blob); $("player").dataset.id = r.id;
+  }
+  $("saveBtn").disabled = !take;
+  $("saveBtn").textContent = take ? "✅ 存起來" : "✔ 已經存好";
+  if(!take && saved) renderSentence(saved.ok);
+}
+function resetTake(){take=null;$("status").textContent="";window.speechSynthesis&&speechSynthesis.cancel();$("player").pause()}
+function leaveOk(){
+  if(busy) return false;
+  return !take || confirm("這次的錄音還沒有存起來，確定要離開嗎？");
+}
+function go(i){if(!leaveOk())return;cur=i;part=-1;resetTake();$("zh").classList.add("hide");render()}
+function lock(on){
+  busy=on;
+  document.querySelectorAll("#practice button").forEach(b=>{ if(b.id!=="recBtn") b.disabled=on; });
+}
+
+/* ---------- 錄音＋語音辨識 ---------- */
+async function startRec(){
+  if(window.speechSynthesis) speechSynthesis.cancel();
+  $("player").pause(); lock(true); $("recBtn").disabled=true;
+  let stream;
+  try{ stream = await navigator.mediaDevices.getUserMedia({audio:true}); }
+  catch(e){
+    lock(false); $("recBtn").disabled=false; render();
+    $("status").textContent = "麥克風打不開。請按網址列旁的圖示「允許麥克風」，或請老師幫忙。"; return;
+  }
+  const chunks=[]; let rec;
+  try{ rec = new MediaRecorder(stream); }
+  catch(e){stream.getTracks().forEach(t=>t.stop());lock(false);$("recBtn").disabled=false;render();$("status").textContent="這個瀏覽器不能錄音，請改用 Chrome。";return}
+  rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+  const a = {rec,stream,chunks,heard:[],now:"",recog:null,stopping:false,err:""};
+  active = a;
+  rec.start();
+  if(SR){
+    const g = new SR(); g.lang="en-US"; g.continuous=true; g.interimResults=true;
+    g.onresult = e => {
+      let f="",t=""; for(const r of e.results){ if(r.isFinal) f+=" "+r[0].transcript; else t+=" "+r[0].transcript; }
+      a.now = f+" "+t;
+    };
+    g.onerror = e => { if(e.error!=="no-speech" && e.error!=="aborted") a.err=e.error; };
+    g.onend = () => {
+      if(a.now){a.heard.push(a.now);a.now=""}
+      if(!a.stopping && !a.err){ try{g.start();return}catch(e){} }
+      a.ended && a.ended();
+    };
+    try{ g.start(); a.recog=g; }catch(e){a.err="start"}
+  }
+  $("result").classList.add("hide"); renderSentence();
+  $("recBtn").disabled=false; $("recBtn").textContent="⏹ 念完了，按我"; $("recBtn").classList.add("on");
+  $("status").textContent="🔴 錄音中… 請大聲念出來";
+  a.timer = setTimeout(stopRec, 60000);
+}
+async function stopRec(){
+  const a=active; if(!a||a.stopping) return;
+  a.stopping=true; clearTimeout(a.timer); $("recBtn").disabled=true; $("recBtn").classList.remove("on");
+  $("status").textContent="⏳ 請等一下…";
+  const audioDone = new Promise(res=>{a.rec.onstop=res; a.rec.stop();});
+  let recogDone = Promise.resolve();
+  if(a.recog && !a.err){
+    recogDone = new Promise(res=>{a.ended=res; setTimeout(res,4000); try{a.recog.stop()}catch(e){res()}});
+  }
+  await Promise.all([audioDone,recogDone]);
+  a.stream.getTracks().forEach(t=>t.stop());
+  if(a.now) a.heard.push(a.now);
+  if(a.recog) { a.recog.onend=null; try{a.recog.abort()}catch(e){} }
+  const blob = new Blob(a.chunks,{type:a.rec.mimeType||"audio/webm"});
+  const heard = a.heard.join(" ").trim();
+  const tw = words(target(cur,part));
+  const ok = heard ? match(tw, words(heard)) : null;
+  take = blob.size ? {id:Date.now()+"-"+Math.random().toString(36).slice(2), blob, heard, ok,
+    score: ok ? Math.round(ok.filter(Boolean).length/tw.length*100) : null, time:new Date().toISOString()} : null;
+  active=null; lock(false); $("recBtn").disabled=false; $("recBtn").textContent="🎤 開始錄音";
+  render();
+  $("status").textContent = !take ? "沒有錄到聲音，請再試一次。" : take.score===null ? "電腦聽不清楚，沒有自動分數。" : "";
+}
+
+/* ---------- 存檔與上傳 ---------- */
+const clean = s => s.replace(/[\\\/:*?"<>|\x00-\x1f]/g,"").trim();
+const ext = t => t.includes("mp4") ? "m4a" : t.includes("ogg") ? "ogg" : "webm";
+const partName = p => p<0 ? "整句" : "第"+(p+1)+"段";
+const fileName = (i,p,r) => `${student.cls}_${student.name}_第${i+1}句_${partName(p)}.${ext(r.blob.type)}`;
+async function upload(payload){
+  const res = await fetch(UPLOAD_URL,{method:"POST",body:JSON.stringify(payload),signal:AbortSignal.timeout(45000)});
+  const j = await res.json(); if(!j.ok) throw new Error(j.error||"upload failed");
+}
+async function uploadRecord(i,p,r){
+  const b64 = await new Promise((res,rej)=>{const f=new FileReader();f.onload=()=>res(f.result.split(",")[1]);f.onerror=rej;f.readAsDataURL(r.blob)});
+  await upload({type:"record",cls:student.cls,name:student.name,sentence:i+1,part:partName(p),text:target(i,p),
+    heard:r.heard,score:r.score,attempts:r.attempts,fileName:fileName(i,p,r),mime:r.blob.type,audio:b64});
+}
+async function saveTake(){
+  if(!take) return;
+  const i=cur,p=part,k=keyOf(i,p);
+  const r = {...take, attempts:(records[k]?.attempts||0)+1, uploaded:false};
+  lock(true); $("recBtn").disabled=true; $("status").textContent="💾 存檔中…";
+  records[k]=r; const stored = await persist(); take=null;
+  let msg = stored ? "✅ 存好了！" : "⚠️ 這台電腦無法保留紀錄，請馬上請老師下載。";
+  if(UPLOAD_URL){
+    try{ await uploadRecord(i,p,r); r.uploaded=true; await persist(); msg="✅ 存好了，也交給老師了！"; }
+    catch(e){ msg="⚠️ 已存在電腦，但還沒交給老師。請老師到「老師評分」按「補傳」。"; }
+  }
+  lock(false); $("recBtn").disabled=false; render(); $("status").textContent=msg;
+}
+
+/* ---------- 老師頁面 ---------- */
+let urls=[];
+function renderTeacher(){
+  urls.forEach(URL.revokeObjectURL); urls=[];
+  const box=$("tList"); box.replaceChildren(); $("tMsg").textContent="";
+  const h=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e};
+  box.append(h("h2",`${student.cls} ${student.name}`));
+  SENTENCES.forEach((_,i)=>{
+    const res=sentenceResult(i), t=records["t_"+i]||{};
+    box.append(h("h3",`第${i+1}句　${res.done?"已完成":"未完成"}　電腦分數：${res.score??"—"} ${res.how}`), h("p",full(i)));
+    [-1,0,1,2].forEach(p=>{
+      const r=records[keyOf(i,p)]; if(!r) return;
+      const au=h("audio"); au.controls=true; const u=URL.createObjectURL(r.blob); urls.push(u); au.src=u;
+      const dl=h("a","下載"); dl.href=u; dl.download=clean(fileName(i,p,r));
+      const d=h("div"); d.append(h("div",`${partName(p)}：${r.score??"—"} 分（第 ${r.attempts} 次存檔）　電腦聽到：${r.heard||"（沒有辨識結果）"}`),au," ",dl); box.append(d);
+    });
+    if(!res.done && !SENTENCES[i].parts.some((_,p)=>records[keyOf(i,p)])) return;
+    const s=h("input"); s.type="number"; s.min=0; s.max=100; s.value=t.score??""; s.placeholder="老師分數 0–100"; s.setAttribute("aria-label",`第${i+1}句老師分數`);
+    const c=h("input"); c.value=t.note??""; c.placeholder="老師評語（可不填）"; c.setAttribute("aria-label",`第${i+1}句評語`);
+    const b=button("儲存第"+(i+1)+"句評分","small",async()=>{
+      const v = s.value===""?null:Math.max(0,Math.min(100,Math.round(+s.value))); s.value=v??"";
+      records["t_"+i]={score:v,note:c.value.trim()}; await persist(); let m="已儲存老師評分。";
+      if(UPLOAD_URL){ try{await upload({type:"teacher",cls:student.cls,name:student.name,sentence:i+1,score:v,note:c.value.trim()});m="評分已存到雲端。"}catch(e){m="評分存在電腦了，但沒有傳到雲端。"} }
+      $("tMsg").textContent=m; b.textContent="✔ "+m;
+    });
+    box.append(s,c,b);
+  });
+  const pending = Object.entries(records).filter(([k,r])=>!k.startsWith("t_")&&!r.uploaded);
+  if(UPLOAD_URL && pending.length) box.prepend(button(`☁ 補傳 ${pending.length} 個錄音`,"primary",async e=>{
+    e.target.disabled=true; let fail=0;
+    for(const [k,r] of pending){const [i,p]=k.split("_").map(Number); try{await uploadRecord(i,p,r);r.uploaded=true}catch(x){fail++}}
+    await persist(); renderTeacher(); $("tMsg").textContent = fail?`還有 ${fail} 個沒傳成功，請檢查網路與網址。`:"全部傳好了。";
+  }));
+}
+function csv(){
+  const q=v=>{let s=String(v??""); if(/^[=+\-@]/.test(s)) s="'"+s; return '"'+s.replace(/"/g,'""')+'"'};
+  const rows=[["班級座號","姓名","句號","句子","完成","電腦分數","評分方式","老師分數","老師評語"]];
+  SENTENCES.forEach((_,i)=>{const r=sentenceResult(i),t=records["t_"+i]||{};
+    rows.push([student.cls,student.name,i+1,full(i),r.done?"是":"否",r.score,r.how,t.score,t.note])});
+  return "﻿"+rows.map(r=>r.map(q).join(",")).join("\r\n");
+}
+/* 不壓縮的 ZIP */
+const CRC=Array.from({length:256},(_,n)=>{for(let k=0;k<8;k++)n=n&1?0xedb88320^(n>>>1):n>>>1;return n>>>0});
+function crc32(u){let c=0xffffffff;for(const b of u)c=CRC[(c^b)&255]^(c>>>8);return (c^0xffffffff)>>>0}
+function zip(files){
+  const enc=new TextEncoder(), out=[], dir=[]; let off=0;
+  const le=(...f)=>{const b=[];for(const [v,n] of f)for(let i=0;i<n;i++)b.push((v>>>(8*i))&255);return new Uint8Array(b)};
+  const d=new Date(), time=(d.getHours()<<11)|(d.getMinutes()<<5), date=((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate();
+  for(const f of files){
+    const n=enc.encode(f.name), c=crc32(f.data), L=f.data.length;
+    const head=le([0x04034b50,4],[20,2],[0x800,2],[0,2],[time,2],[date,2],[c,4],[L,4],[L,4],[n.length,2],[0,2]);
+    dir.push(le([0x02014b50,4],[20,2],[20,2],[0x800,2],[0,2],[time,2],[date,2],[c,4],[L,4],[L,4],[n.length,2],[0,2],[0,2],[0,2],[0,2],[0,4],[off,4]),n);
+    out.push(head,n,f.data); off+=head.length+n.length+L;
+  }
+  const size=dir.reduce((s,x)=>s+x.length,0);
+  return new Blob([...out,...dir,le([0x06054b50,4],[0,2],[0,2],[files.length,2],[files.length,2],[size,4],[off,4],[0,2])],{type:"application/zip"});
+}
+async function downloadAll(){
+  const files=[{name:"成績.csv",data:new TextEncoder().encode(csv())}];
+  for(const [k,r] of Object.entries(records)){ if(k.startsWith("t_")) continue;
+    const [i,p]=k.split("_").map(Number); files.push({name:clean(fileName(i,p,r)),data:new Uint8Array(await r.blob.arrayBuffer())}); }
+  const a=document.createElement("a"), u=URL.createObjectURL(zip(files));
+  a.href=u; a.download=clean(`朗讀_${student.cls}_${student.name}.zip`); document.body.append(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(u),60000);
+  $("tMsg").textContent="已下載到「下載」資料夾。";
+}
+
+/* ---------- 啟動 ---------- */
+$("startBtn").onclick = async()=>{
+  const cls=clean($("cls").value), name=clean($("nm").value);
+  if(!cls||!name){$("loginMsg").textContent="請填班級座號和姓名。";return}
+  student={cls,name,key:JSON.stringify([cls,name])};
+  records=(await dbGet(student.key))||{};
+  $("who").textContent=`👤 ${cls} ${name}`;
+  const first=SENTENCES.findIndex((_,i)=>!sentenceResult(i).done);
+  cur=first<0?0:first; part=-1; resetTake(); show("practice"); render();
+};
+$("switchBtn").onclick=()=>{if(!leaveOk())return;resetTake();$("cls").value="";$("nm").value="";show("login")};
+$("recBtn").onclick=()=>active?stopRec():startRec();
+$("listen").onclick=()=>say(target(cur,part),0.85);
+$("listenSlow").onclick=()=>say(target(cur,part),0.55);
+$("zhBtn").onclick=()=>$("zh").classList.toggle("hide");
+$("againBtn").onclick=()=>{resetTake();startRec()};
+$("saveBtn").onclick=saveTake;
+$("prevBtn").onclick=()=>go(cur-1);
+$("nextBtn").onclick=()=>go(cur+1);
+$("teacherBtn").onclick=()=>{if(!leaveOk())return;resetTake();render();renderTeacher();show("teacher")};
+$("backBtn").onclick=()=>{document.querySelectorAll("#tList audio").forEach(a=>a.pause());show("practice");render()};
+$("zipBtn").onclick=downloadAll;
+$("clearBtn").onclick=async()=>{if(!confirm("確定刪除這位學生在這台電腦的所有錄音和分數？"))return;records={};await persist();renderTeacher()};
+window.addEventListener("beforeunload",e=>{if(take||active){e.preventDefault();e.returnValue=""}});
+const warns=[];
+if(!navigator.mediaDevices||!window.MediaRecorder) warns.push("這個環境不能錄音。請用 Chrome 開啟（https 網址）。");
+else if(!SR) warns.push("這個瀏覽器沒有語音辨識，可以錄音存檔，但沒有自動分數。建議使用 Chrome。");
+if(warns.length){$("envWarn").textContent=warns.join(" ");$("envWarn").classList.remove("hide")}
+</script>
+</body>
+</html>
